@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModelSwap - 3D Model Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header with controls -->
+        <header class="header">
+            <div class="header-controls">
+                <div class="language-switch">
+                    <button class="lang-btn active" data-lang="en">EN</button>
+                    <button class="lang-btn" data-lang="es">ES</button>
+                </div>
+                <div class="theme-switch">
+                    <button class="theme-btn" id="themeToggle">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </div>
+            
+            <h1 class="title">
+                <span class="gradient-text" data-en="Model" data-es="Modelo">Model</span><span data-en="Swap" data-es="Swap">Swap</span>
+            </h1>
+            <p class="subtitle" data-en="Convert 3D models between different formats with ease" data-es="Convierte modelos 3D entre diferentes formatos con facilidad">Convert 3D models between different formats with ease</p>
+        </header>
+
+        <main class="main-content">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">📁</div>
+                        <h3 data-en="Drag & Drop Files Here" data-es="Arrastra y Suelta Archivos Aquí">Drag & Drop Files Here</h3>
+                        <p data-en="or click to browse" data-es="o haz clic para explorar">or click to browse</p>
+                        <input type="file" id="fileInput" multiple accept=".obj,.stl,.ply,.dae,.gltf,.glb,.off" style="display: none;">
+                    </div>
+                </div>
+                <div class="file-list" id="fileList"></div>
+
+                <div class="format-selection">
+                    <label for="outputFormat" data-en="Output Format:" data-es="Formato de Salida:">Output Format:</label>
+                    <select id="outputFormat" class="format-select">
+                        <option value="obj">OBJ (.obj)</option>
+                        <option value="stl">STL (.stl)</option>
+                        <option value="ply">PLY (.ply)</option>
+                        <option value="dae">COLLADA (.dae)</option>
+                        <option value="gltf">glTF (.gltf)</option>
+                        <option value="glb">GLB (.glb)</option>
+                        <option value="off">OFF (.off)</option>
+                    </select>
+                </div>
+
+                <button class="convert-btn" id="convertBtn" disabled>
+                    <span class="btn-text" data-en="Convert Files" data-es="Convertir Archivos">Convert Files</span>
+                    <span class="btn-loading" style="display: none;" data-en="Converting..." data-es="Convirtiendo...">Converting...</span>
+                </button>
+
+                <div class="supported-formats-compact">
+                    <div class="formats-carousel">
+                        <div class="format-slide active">
+                            <div class="format-icon">📦</div>
+                            <div class="format-info">
+                                <span class="format-name">OBJ</span>
+                                <span class="format-desc" data-en="Wavefront Object" data-es="Objeto Wavefront">Wavefront Object</span>
+                            </div>
+                        </div>
+                        <div class="format-slide">
+                            <div class="format-icon">🔺</div>
+                            <div class="format-info">
+                                <span class="format-name">STL</span>
+                                <span class="format-desc" data-en="Stereolithography" data-es="Estereolitografía">Stereolithography</span>
+                            </div>
+                        </div>
+                        <div class="format-slide">
+                            <div class="format-icon">📊</div>
+                            <div class="format-info">
+                                <span class="format-name">PLY</span>
+                                <span class="format-desc" data-en="Stanford Polygon" data-es="Polígono Stanford">Stanford Polygon</span>
+                            </div>
+                        </div>
+                        <div class="format-slide">
+                            <div class="format-icon">🎨</div>
+                            <div class="format-info">
+                                <span class="format-name">COLLADA</span>
+                                <span class="format-desc" data-en="3D Asset Exchange" data-es="Intercambio de Activos 3D">3D Asset Exchange</span>
+                            </div>
+                        </div>
+                        <div class="format-slide">
+                            <div class="format-icon">🌐</div>
+                            <div class="format-info">
+                                <span class="format-name">glTF</span>
+                                <span class="format-desc" data-en="Web 3D Standard" data-es="Estándar Web 3D">Web 3D Standard</span>
+                            </div>
+                        </div>
+                        <div class="format-slide">
+                            <div class="format-icon">📦</div>
+                            <div class="format-info">
+                                <span class="format-name">GLB</span>
+                                <span class="format-desc" data-en="Binary glTF" data-es="glTF Binario">Binary glTF</span>
+                            </div>
+                        </div>
+                        <div class="format-slide">
+                            <div class="format-icon">📐</div>
+                            <div class="format-info">
+                                <span class="format-name">OFF</span>
+                                <span class="format-desc" data-en="Object File Format" data-es="Formato de Archivo Objeto">Object File Format</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-controls">
+                        <button class="carousel-btn prev" id="prevFormat">‹</button>
+                        <div class="carousel-dots" id="formatDots"></div>
+                        <button class="carousel-btn next" id="nextFormat">›</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cleanup-section">
+                <button class="cleanup-btn" id="cleanupBtn" data-en="Clean Up Files" data-es="Limpiar Archivos">Clean Up Files</button>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h3 data-en="Conversion Results" data-es="Resultados de Conversión">Conversion Results</h3>
+                <div class="results-content" id="resultsContent"></div>
+            </div>
+
+            <div class="faq-section">
+                <h3 data-en="Frequently Asked Questions" data-es="Preguntas Frecuentes">Frequently Asked Questions</h3>
+                <div class="faq-container">
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="What file formats are supported?" data-es="¿Qué formatos de archivo son compatibles?">
+                            What file formats are supported?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="ModelSwap supports all major 3D model formats including OBJ, STL, PLY, COLLADA (.dae), glTF (.gltf), GLB (.glb), and OFF (.off). You can convert between any of these formats." data-es="ModelSwap es compatible con todos los formatos principales de modelos 3D, incluyendo OBJ, STL, PLY, COLLADA (.dae), glTF (.gltf), GLB (.glb) y OFF (.off). Puedes convertir entre cualquiera de estos formatos.">
+                                ModelSwap supports all major 3D model formats including OBJ, STL, PLY, COLLADA (.dae), glTF (.gltf), GLB (.glb), and OFF (.off). You can convert between any of these formats.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="What is the maximum file size?" data-es="¿Cuál es el tamaño máximo de archivo?">
+                            What is the maximum file size?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="The maximum file size is 100MB per file. For larger files, consider splitting them into smaller parts or using specialized 3D software." data-es="El tamaño máximo de archivo es 100MB por archivo. Para archivos más grandes, considera dividirlos en partes más pequeñas o usar software 3D especializado.">
+                                The maximum file size is 100MB per file. For larger files, consider splitting them into smaller parts or using specialized 3D software.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="How long does conversion take?" data-es="¿Cuánto tiempo toma la conversión?">
+                            How long does conversion take?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="Conversion time depends on file size and complexity. Small files (under 10MB) typically convert in a few seconds, while larger files may take up to a minute. The process is optimized for speed and efficiency." data-es="El tiempo de conversión depende del tamaño y complejidad del archivo. Los archivos pequeños (menos de 10MB) típicamente se convierten en unos segundos, mientras que archivos más grandes pueden tomar hasta un minuto. El proceso está optimizado para velocidad y eficiencia.">
+                                Conversion time depends on file size and complexity. Small files (under 10MB) typically convert in a few seconds, while larger files may take up to a minute. The process is optimized for speed and efficiency.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="Are my files safe and private?" data-es="¿Mis archivos están seguros y son privados?">
+                            Are my files safe and private?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="Yes! Your files are processed locally and are automatically deleted after conversion. We don't store, share, or access your files. All processing happens on your device for maximum privacy and security." data-es="¡Sí! Tus archivos se procesan localmente y se eliminan automáticamente después de la conversión. No almacenamos, compartimos ni accedemos a tus archivos. Todo el procesamiento ocurre en tu dispositivo para máxima privacidad y seguridad.">
+                                Yes! Your files are processed locally and are automatically deleted after conversion. We don't store, share, or access your files. All processing happens on your device for maximum privacy and security.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="Can I convert multiple files at once?" data-es="¿Puedo convertir múltiples archivos a la vez?">
+                            Can I convert multiple files at once?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="Absolutely! You can select multiple files and convert them all to the same output format in one batch operation. This is more efficient than converting files individually." data-es="¡Absolutamente! Puedes seleccionar múltiples archivos y convertirlos todos al mismo formato de salida en una operación por lotes. Esto es más eficiente que convertir archivos individualmente.">
+                                Absolutely! You can select multiple files and convert them all to the same output format in one batch operation. This is more efficient than converting files individually.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="What if my conversion fails?" data-es="¿Qué pasa si mi conversión falla?">
+                            What if my conversion fails?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="If conversion fails, check that your file is a valid 3D model in a supported format. Common issues include corrupted files, unsupported formats, or files that are too large. The application will show specific error messages to help you troubleshoot." data-es="Si la conversión falla, verifica que tu archivo sea un modelo 3D válido en un formato compatible. Los problemas comunes incluyen archivos corruptos, formatos no compatibles o archivos demasiado grandes. La aplicación mostrará mensajes de error específicos para ayudarte a solucionar el problema.">
+                                If conversion fails, check that your file is a valid 3D model in a supported format. Common issues include corrupted files, unsupported formats, or files that are too large. The application will show specific error messages to help you troubleshoot.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="Do you support textures and materials?" data-es="¿Soportan texturas y materiales?">
+                            Do you support textures and materials?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="Yes, we support textures and materials where the format allows it. Formats like OBJ, COLLADA, and glTF preserve texture information. However, some formats like STL are geometry-only and will not preserve texture data." data-es="Sí, soportamos texturas y materiales donde el formato lo permite. Formatos como OBJ, COLLADA y glTF preservan la información de texturas. Sin embargo, algunos formatos como STL son solo geometría y no preservarán los datos de textura.">
+                                Yes, we support textures and materials where the format allows it. Formats like OBJ, COLLADA, and glTF preserve texture information. However, some formats like STL are geometry-only and will not preserve texture data.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" data-en="Is this application free to use?" data-es="¿Esta aplicación es gratuita?">
+                            Is this application free to use?
+                            <span class="faq-icon">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p data-en="Yes! ModelSwap is completely free and open source. You can use it for personal or commercial projects without any restrictions. The source code is available on GitHub for transparency and community contributions." data-es="¡Sí! ModelSwap es completamente gratuito y de código abierto. Puedes usarlo para proyectos personales o comerciales sin restricciones. El código fuente está disponible en GitHub para transparencia y contribuciones de la comunidad.">
+                                Yes! ModelSwap is completely free and open source. You can use it for personal or commercial projects without any restrictions. The source code is available on GitHub for transparency and community contributions.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="company-info">
+                        <div class="company-logo">
+                            <span class="logo-text">FL</span>
+                            <span class="logo-subtitle" data-en="Automatons" data-es="Automatons">Automatons</span>
+                        </div>
+                        <p class="company-description" data-en="Innovative solutions for the digital age" data-es="Soluciones innovadoras para la era digital">
+                            Innovative solutions for the digital age
+                        </p>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h4 data-en="Quick Links" data-es="Enlaces Rápidos">Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="#" data-en="About Us" data-es="Sobre Nosotros">About Us</a></li>
+                        <li><a href="#" data-en="Services" data-es="Servicios">Services</a></li>
+                        <li><a href="#" data-en="Contact" data-es="Contacto">Contact</a></li>
+                        <li><a href="https://flucena.vercel.app/" target="_blank" rel="noopener noreferrer" data-en="Portfolio" data-es="Portfolio">Portfolio</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4 data-en="Connect" data-es="Conectar">Connect</h4>
+                    <div class="social-links">
+                        <a href="https://github.com/FLucena" target="_blank" rel="noopener noreferrer" class="social-link">
+                            <span class="social-icon">🐙</span>
+                            <span>GitHub</span>
+                        </a>
+                        <a href="https://www.linkedin.com/in/franciscoivanlucena/" target="_blank" rel="noopener noreferrer" class="social-link">
+                            <span class="social-icon">💼</span>
+                            <span>LinkedIn</span>
+                        </a>
+                        <a href="mailto:franciscolucena90@gmail.com" class="social-link">
+                            <span class="social-icon">✉️</span>
+                            <span>Email</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-credits">
+                    <p class="footer-text">
+                        <span data-en="Built with ❤️ by" data-es="Construido con ❤️ por">Built with ❤️ by</span>
+                        <a href="https://flucena.vercel.app/" target="_blank" rel="noopener noreferrer" class="portfolio-link">
+                            <span class="gradient-text">FL Automatons</span>
+                        </a>
+                        <span data-en="using Flask & Trimesh" data-es="usando Flask & Trimesh">using Flask & Trimesh</span>
+                    </p>
+                    <p class="copyright">
+                        © 2025 FL Automatons. <span data-en="All rights reserved." data-es="Todos los derechos reservados.">All rights reserved.</span>
+                    </p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 
