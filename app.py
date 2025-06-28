@@ -63,7 +63,11 @@ def convert_model(input_path, output_format):
         
         return temp_output.name
     except Exception as e:
-        raise Exception(f"Conversion failed: {str(e)}")
+        error_msg = str(e)
+        if "ptp" in error_msg and "NumPy" in error_msg:
+            raise Exception(f"NumPy compatibility issue detected. Please ensure NumPy version 1.26.x is installed. Error: {error_msg}")
+        else:
+            raise Exception(f"Conversion failed: {error_msg}")
 
 @app.route('/')
 def index():
