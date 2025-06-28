@@ -269,6 +269,6 @@ Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](L
 ---
 
 <div align="center">
-  <p>Built with ❤️ by <a href="https://flucena.vercel.app/">FL Automatons</a></p>
-  <p>Construido con ❤️ por <a href="https://flucena.vercel.app/">FL Automatons</a></p>
+  <p>Built by <a href="https://flucena.vercel.app/">FL Automatons</a></p>
+  <p>Construido por <a href="https://flucena.vercel.app/">FL Automatons</a></p>
 </div> 
