@@ -1,0 +1,9 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modelswap"
+version = "1.0.0"
+description = "3D Model Format Converter"
+requires-python = ">=3.9" 
