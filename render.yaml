@@ -7,11 +7,10 @@ services:
       python --version
       pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
-      pip install "numpy>=1.26.0" "scipy>=1.11.0" "networkx>=3.0.0" pycollada==0.9.1 trimesh==3.23.5
     startCommand: gunicorn app:app --config gunicorn.conf.py
     envVars:
       - key: PYTHON_VERSION
-        value: 3.13.4
+        value: 3.11.7
       - key: FLASK_ENV
         value: production
       - key: FLASK_DEBUG
