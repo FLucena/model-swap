@@ -1,3 +1,59 @@
+// Global variables
+let selectedFiles = [];
+let fileMap = new Map(); // To prevent duplicates
+let currentLanguage = 'en';
+let currentTheme = localStorage.getItem('theme') || 'light';
+let currentFormatSlide = 0;
+let formatSlides = [];
+let carouselInterval;
+
+// Global function for removing files
+function removeFile(idx) {
+    // Remove file from arrays
+    const removedFile = selectedFiles[idx];
+    selectedFiles.splice(idx, 1);
+    
+    // Remove from fileMap
+    const key = removedFile.name + '_' + removedFile.size;
+    fileMap.delete(key);
+    
+    // Update UI
+    const convertBtn = document.getElementById('convertBtn');
+    if (selectedFiles.length === 0) {
+        convertBtn.disabled = true;
+    }
+    
+    showFileList();
+}
+
+// Global function for showing file list
+function showFileList() {
+    const fileList = document.getElementById('fileList');
+    const uploadArea = document.getElementById('uploadArea');
+    
+    fileList.innerHTML = '';
+    
+    if (selectedFiles.length > 0) {
+        // Hide upload area when files are selected
+        uploadArea.style.display = 'none';
+        
+        selectedFiles.forEach((file, idx) => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `
+                <span class="file-name">${file.name}</span>
+                <div class="file-progress"><div class="file-progress-bar" id="progressBar${idx}"></div></div>
+                <span class="file-status" id="fileStatus${idx}"></span>
+                <button class="remove-file-btn" onclick="removeFile(${idx})" title="${currentLanguage === 'es' ? 'Eliminar archivo' : 'Remove file'}">×</button>
+            `;
+            fileList.appendChild(item);
+        });
+    } else {
+        // Show upload area when no files are selected
+        uploadArea.style.display = 'block';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
@@ -12,14 +68,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevFormatBtn = document.getElementById('prevFormat');
     const nextFormatBtn = document.getElementById('nextFormat');
     const formatDots = document.getElementById('formatDots');
-
-    let selectedFiles = [];
-    let fileMap = new Map(); // To prevent duplicates
-    let currentLanguage = 'en';
-    let currentTheme = localStorage.getItem('theme') || 'light';
-    let currentFormatSlide = 0;
-    let formatSlides = [];
-    let carouselInterval;
 
     // Initialize theme and language
     initializeTheme();
@@ -194,21 +242,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 : 'Please select a valid 3D model file (.obj, .stl, .ply, .dae, .gltf, .glb, .off)';
             alert(message);
         }
-    }
-
-    function showFileList() {
-        const fileList = document.getElementById('fileList');
-        fileList.innerHTML = '';
-        selectedFiles.forEach((file, idx) => {
-            const item = document.createElement('div');
-            item.className = 'file-item';
-            item.innerHTML = `
-                <span class="file-name">${file.name}</span>
-                <div class="file-progress"><div class="file-progress-bar" id="progressBar${idx}"></div></div>
-                <span class="file-status" id="fileStatus${idx}"></span>
-            `;
-            fileList.appendChild(item);
-        });
     }
 
     // Convert files
