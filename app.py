@@ -8,6 +8,9 @@ from werkzeug.utils import secure_filename
 import uuid
 from pathlib import Path
 import logging
+import gc
+import psutil
+import time
 
 # Try to import trimesh, but don't fail if it's not available
 try:
@@ -37,16 +40,29 @@ app.config['DEBUG'] = False
 app.config['TESTING'] = False
 
 # Rate limiting with Redis for production (fallback to memory for development)
-if os.environ.get('REDIS_URL'):
-    from flask_limiter.util import get_remote_address
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"],
-        storage_uri=os.environ.get('REDIS_URL')
-    )
+redis_url = os.environ.get('REDIS_URL')
+if redis_url:
+    try:
+        from flask_limiter.util import get_remote_address
+        limiter = Limiter(
+            app=app,
+            key_func=get_remote_address,
+            default_limits=["200 per day", "50 per hour"],
+            storage_uri=redis_url,
+            strategy="fixed-window-elastic-expiry"
+        )
+        logger.info("Flask-Limiter configured with Redis storage")
+    except Exception as e:
+        logger.warning(f"Failed to configure Redis storage for Flask-Limiter: {e}")
+        logger.warning("Falling back to in-memory storage")
+        limiter = Limiter(
+            app=app,
+            key_func=get_remote_address,
+            default_limits=["200 per day", "50 per hour"]
+        )
 else:
     # Use memory storage for development (not recommended for production)
+    logger.warning("No REDIS_URL found - using in-memory storage for rate limiting")
     limiter = Limiter(
         app=app,
         key_func=get_remote_address,
@@ -84,6 +100,7 @@ def convert_model(input_path, output_format):
     if not TRIMESH_AVAILABLE:
         raise Exception("3D conversion service is not available. Please try again later.")
     
+    temp_output = None
     try:
         # Load the mesh
         mesh = trimesh.load(input_path)
@@ -92,15 +109,30 @@ def convert_model(input_path, output_format):
         temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=f'.{output_format}')
         temp_output.close()
         
-        # Export to desired format
-        if output_format == 'obj':
-            # For OBJ, we need to handle materials
-            mesh.export(temp_output.name, file_type='obj')
+        # Always use a Trimesh object for export
+        mesh_to_export = None
+        if hasattr(mesh, 'export'):
+            mesh_to_export = mesh
+        elif isinstance(mesh, list) and len(mesh) > 0 and hasattr(mesh[0], 'export'):
+            mesh_to_export = mesh[0]
         else:
-            mesh.export(temp_output.name, file_type=output_format)
+            raise Exception("Invalid mesh format")
+        
+        mesh_to_export.export(temp_output.name, file_type=output_format)  # type: ignore[attr-defined]
+        
+        # Clear mesh from memory
+        del mesh
+        gc.collect()
         
         return temp_output.name
     except Exception as e:
+        # Clean up temp file on error
+        if temp_output and os.path.exists(temp_output.name):
+            try:
+                os.remove(temp_output.name)
+            except:
+                pass
+        
         error_msg = str(e)
         if "ptp" in error_msg and "NumPy" in error_msg:
             raise Exception(f"NumPy compatibility issue detected. Please ensure NumPy version 1.26.x is installed. Error: {error_msg}")
@@ -115,6 +147,11 @@ def index():
 @limiter.limit("10 per minute")  # Rate limit uploads
 def upload_file():
     try:
+        # Log memory usage before processing
+        process = psutil.Process()
+        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+        logger.info(f"Memory usage before upload: {initial_memory:.2f} MB")
+        
         if 'files[]' not in request.files:
             logger.warning("Upload attempt without files")
             return jsonify({'error': 'No files provided'}), 400
@@ -126,10 +163,10 @@ def upload_file():
             logger.warning("Upload attempt with empty files")
             return jsonify({'error': 'No files selected'}), 400
         
-        # Check file count limit
-        if len(files) > app.config['MAX_FILES_PER_REQUEST']:
-            logger.warning(f"Upload attempt with too many files: {len(files)}")
-            return jsonify({'error': f'Maximum {app.config["MAX_FILES_PER_REQUEST"]} files allowed per request'}), 400
+        # Only process one file at a time to prevent memory leaks
+        if len(files) > 1:
+            logger.warning(f"Multiple files received ({len(files)}), only processing first file")
+            files = [files[0]]  # Only process the first file
         
         if output_format not in SUPPORTED_FORMATS:
             logger.warning(f"Unsupported output format requested: {output_format}")
@@ -149,8 +186,16 @@ def upload_file():
                     logger.warning(error_msg)
                     errors.append(error_msg)
                     continue
+                
+                filepath = None
                 try:
                     # Secure filename and save
+                    if file.filename is None:
+                        error_msg = f"Invalid filename for file"
+                        logger.warning(error_msg)
+                        errors.append(error_msg)
+                        continue
+                        
                     filename = secure_filename(file.filename)
                     unique_filename = f"{uuid.uuid4().hex}_{filename}"
                     filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
@@ -174,20 +219,29 @@ def upload_file():
                     
                     logger.info(f"Successfully converted: {filename} -> {output_filename}")
                     
-                    # Clean up uploaded file
-                    os.remove(filepath)
-                    
                 except Exception as e:
                     error_msg = f"Error converting {file.filename}: {str(e)}"
                     logger.error(error_msg)
                     errors.append(error_msg)
-                    # Clean up on error
-                    if os.path.exists(filepath):
-                        os.remove(filepath)
+                finally:
+                    # Clean up uploaded file
+                    if filepath and os.path.exists(filepath):
+                        try:
+                            os.remove(filepath)
+                        except Exception as e:
+                            logger.warning(f"Failed to clean up {filepath}: {e}")
             else:
                 error_msg = f"Invalid file format: {file.filename}"
                 logger.warning(error_msg)
                 errors.append(error_msg)
+        
+        # Force garbage collection after processing
+        gc.collect()
+        
+        # Log memory usage after processing
+        final_memory = process.memory_info().rss / 1024 / 1024  # MB
+        memory_diff = final_memory - initial_memory
+        logger.info(f"Memory usage after upload: {final_memory:.2f} MB (diff: {memory_diff:+.2f} MB)")
         
         logger.info(f"Upload completed: {len(converted_files)} successful, {len(errors)} errors")
         return jsonify({
@@ -197,6 +251,8 @@ def upload_file():
         })
     except Exception as e:
         logger.error(f"Unexpected error in upload: {str(e)}")
+        # Force garbage collection on error
+        gc.collect()
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/download/<filename>')
@@ -234,11 +290,23 @@ def cleanup():
 @app.route('/health')
 def health_check():
     """Health check endpoint for production monitoring"""
-    return jsonify({
-        'status': 'healthy', 
-        'service': 'modelswap',
-        'trimesh_available': TRIMESH_AVAILABLE
-    }), 200
+    try:
+        process = psutil.Process()
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        return jsonify({
+            'status': 'healthy', 
+            'service': 'modelswap',
+            'trimesh_available': TRIMESH_AVAILABLE,
+            'memory_usage_mb': round(memory_mb, 2),
+            'memory_percent': round(process.memory_percent(), 2)
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return jsonify({
+            'status': 'error',
+            'service': 'modelswap',
+            'error': str(e)
+        }), 500
 
 @app.errorhandler(413)
 def too_large(e):

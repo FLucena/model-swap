@@ -160,20 +160,28 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleFiles(files) {
         const supportedFormats = ['obj', 'stl', 'ply', 'dae', 'gltf', 'glb', 'off'];
         let added = false;
+        
+        // Only allow one file at a time to prevent memory issues
+        if (files.length > 1) {
+            const message = currentLanguage === 'es'
+                ? 'Por favor, selecciona solo un archivo a la vez para evitar problemas de memoria.'
+                : 'Please select only one file at a time to prevent memory issues.';
+            alert(message);
+            files = [files[0]]; // Only take the first file
+        }
+        
         for (const file of files) {
             const extension = file.name.split('.').pop().toLowerCase();
             const key = file.name + '_' + file.size;
             if (supportedFormats.includes(extension) && !fileMap.has(key)) {
-                if (selectedFiles.length >= 10) {
-                    const message = currentLanguage === 'es'
-                        ? 'Máximo 10 archivos permitidos. Por favor, elimina algunos archivos antes de agregar más.'
-                        : 'Maximum 10 files allowed. Please remove some files before adding more.';
-                    alert(message);
-                    break;
-                }
+                // Clear previous files since we only allow one at a time
+                selectedFiles = [];
+                fileMap.clear();
+                
                 selectedFiles.push(file);
                 fileMap.set(key, file);
                 added = true;
+                break; // Only add one file
             }
         }
         if (added) {
@@ -182,8 +190,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (selectedFiles.length === 0) {
             convertBtn.disabled = true;
             const message = currentLanguage === 'es'
-                ? 'Por favor selecciona archivos de modelos 3D válidos (.obj, .stl, .ply, .dae, .gltf, .glb, .off)'
-                : 'Please select valid 3D model files (.obj, .stl, .ply, .dae, .gltf, .glb, .off)';
+                ? 'Por favor selecciona un archivo de modelo 3D válido (.obj, .stl, .ply, .dae, .gltf, .glb, .off)'
+                : 'Please select a valid 3D model file (.obj, .stl, .ply, .dae, .gltf, .glb, .off)';
             alert(message);
         }
     }
@@ -207,12 +215,8 @@ document.addEventListener('DOMContentLoaded', function() {
     convertBtn.addEventListener('click', function() {
         if (selectedFiles.length === 0) return;
         convertBtn.disabled = true;
-        // For each file, upload individually with a delay to prevent overwhelming the server
-        selectedFiles.forEach((file, idx) => {
-            setTimeout(() => {
-                uploadSingleFile(file, idx);
-            }, idx * 500); // 500ms delay between each upload
-        });
+        // Process single file
+        uploadSingleFile(selectedFiles[0], 0);
     });
 
     function uploadSingleFile(file, idx) {
@@ -385,11 +389,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const uploadSubtitle = uploadArea.querySelector('p');
         
         if (currentLanguage === 'es') {
-            uploadTitle.textContent = 'Arrastra y Suelta Archivos Aquí';
-            uploadSubtitle.textContent = 'o haz clic para explorar';
+            uploadTitle.textContent = 'Arrastra y Suelta Archivo Aquí';
+            uploadSubtitle.textContent = 'o haz clic para explorar (un archivo a la vez)';
         } else {
-            uploadTitle.textContent = 'Drag & Drop Files Here';
-            uploadSubtitle.textContent = 'or click to browse';
+            uploadTitle.textContent = 'Drag & Drop File Here';
+            uploadSubtitle.textContent = 'or click to browse (one file at a time)';
         }
         fileInput.value = '';
         const fileList = document.getElementById('fileList');
@@ -467,11 +471,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const uploadSubtitle = uploadArea.querySelector('p');
                 
                 if (currentLanguage === 'es') {
-                    uploadTitle.textContent = 'Arrastra y Suelta Archivos Aquí';
-                    uploadSubtitle.textContent = 'o haz clic para explorar';
+                    uploadTitle.textContent = 'Arrastra y Suelta Archivo Aquí';
+                    uploadSubtitle.textContent = 'o haz clic para explorar (un archivo a la vez)';
                 } else {
-                    uploadTitle.textContent = 'Drag & Drop Files Here';
-                    uploadSubtitle.textContent = 'or click to browse';
+                    uploadTitle.textContent = 'Drag & Drop File Here';
+                    uploadSubtitle.textContent = 'or click to browse (one file at a time)';
                 }
                 fileInput.value = '';
             }
