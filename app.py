@@ -2,13 +2,20 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import os
-import trimesh
 import tempfile
 import shutil
 from werkzeug.utils import secure_filename
 import uuid
 from pathlib import Path
 import logging
+
+# Try to import trimesh, but don't fail if it's not available
+try:
+    import trimesh
+    TRIMESH_AVAILABLE = True
+except ImportError:
+    TRIMESH_AVAILABLE = False
+    logging.warning("trimesh not available - 3D conversion features will be disabled")
 
 # Load environment variables from .env file for local development
 try:
@@ -74,6 +81,9 @@ def allowed_file(filename):
 
 def convert_model(input_path, output_format):
     """Convert 3D model to specified format"""
+    if not TRIMESH_AVAILABLE:
+        raise Exception("3D conversion service is not available. Please try again later.")
+    
     try:
         # Load the mesh
         mesh = trimesh.load(input_path)
@@ -224,7 +234,11 @@ def cleanup():
 @app.route('/health')
 def health_check():
     """Health check endpoint for production monitoring"""
-    return jsonify({'status': 'healthy', 'service': 'modelswap'}), 200
+    return jsonify({
+        'status': 'healthy', 
+        'service': 'modelswap',
+        'trimesh_available': TRIMESH_AVAILABLE
+    }), 200
 
 @app.errorhandler(413)
 def too_large(e):
