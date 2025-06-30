@@ -42,7 +42,7 @@ These variables are automatically set by Render:
 # Production Environment Variables
 FLASK_ENV=production
 FLASK_DEBUG=false
-PORT=10000  # Set by Render
+PORT=5000  # Set by Render
 
 # Optional: Redis for rate limiting (if you add Redis service)
 # REDIS_URL=redis://your-redis-url
