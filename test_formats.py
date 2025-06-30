@@ -8,8 +8,8 @@ mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
 
 print("Testing available export formats...")
 
-# Test common formats
-test_formats = ['obj', 'stl', 'ply', 'dae', 'gltf', 'glb', 'off', 'wrl', 'x3d', '3ds', 'dae']
+# Test the formats that are claimed to be supported in the app
+test_formats = ['obj', 'stl', 'ply', 'dae', 'gltf', 'glb', 'off']
 
 for fmt in test_formats:
     try:
@@ -24,4 +24,11 @@ try:
     # Check what methods are available
     print("Available methods:", [m for m in dir(mesh) if 'export' in m.lower()])
 except Exception as e:
-    print(f"Error: {e}") 
+    print(f"Error: {e}")
+
+print("\nChecking trimesh supported formats...")
+try:
+    # Check what formats trimesh claims to support
+    print("Trimesh supported formats:", trimesh.available_formats())
+except Exception as e:
+    print(f"Error getting available formats: {e}") 
